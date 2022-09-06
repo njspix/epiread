@@ -1,5 +1,5 @@
 module EPIREAD
 
-# Write your package code here.
+include ("record.jl")
 
 end
