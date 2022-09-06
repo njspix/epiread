@@ -172,10 +172,10 @@ const record_actions = Dict(
     :record_chromstart => :(record.chromstart = (pos:@relpos(p-1))),
     :record_chromend => :(record.chromend = (pos:@relpos(p-1))),
     :record_name => :(record.name = (pos:@relpos(p-1))),
-    :record_readnum => :(record.score = @relpos(p)),
+    :record_readnum => :(record.readnum = @relpos(p)),
     :record_strand => :(record.strand = @relpos(p)),
-	:record_cg_rle => :(record.cg_rle = (pos:@relpos(p-1))),
-	:record_gc_rle => :(record.gc_rle = (pos:@relpos(p-1)); record.nome==1),
+    :record_cg_rle => :(record.cg_rle = (pos:@relpos(p-1))),
+    :record_gc_rle => :(record.gc_rle = (pos:@relpos(p-1)); record.nome==1),
     :record => :(record.filled = 1:@relpos(p-1))
 )
 
