@@ -245,9 +245,9 @@ end
 
 Get the read number.
 """
-function score(record::Record)::Int
+function readnum(record::Record)::Int
     checkfilled(record)
-    return unsafe_parse_decimal(Int, record.data, record.readnum)
+    return String(record.data[record.readnum])
 end
 
 """
@@ -287,7 +287,7 @@ function gc_rle(record::Record)::String
 	return String(record.data[record.gc_rle])
 end
 
-function hasgc_rle(record::Record)
+function is_nome(record::Record)
 	return Bool(record.nome)
 end
 

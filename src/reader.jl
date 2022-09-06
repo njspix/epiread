@@ -115,11 +115,11 @@ const record_machine, file_machine = (function ()
         strand = re"[+\-.?]"
         strand.actions[:enter] = [:record_strand] #Note: single byte.
 
-        cg_rle = re"[FDPMUATCGatcgx]+"
+        cg_rle = re"[FDPMUATCGatcgx0-9]+"
         cg_rle.actions[:enter] = [:pos]
         cg_rle.actions[:exit] = [:record_cg_rle]
 
-		gc_rle = re"[FDPOSATCGatcgx]+"
+		gc_rle = re"[FDPOSATCGatcgx0-9]+"
         gc_rle.actions[:enter] = [:pos]
         gc_rle.actions[:exit] = [:record_gc_rle]
 
@@ -159,8 +159,8 @@ const record_machine, file_machine = (function ()
     return map(Automa.compile, (record, file))
 end)()
 
-#=
 write("EPIREAD.dot", Automa.machine2dot(file_machine))
+#=
 run(`dot -Tsvg -o EPIREAD.svg EPIREAD.dot`)
 =#
 
@@ -174,8 +174,8 @@ const record_actions = Dict(
     :record_name => :(record.name = (pos:@relpos(p-1))),
     :record_readnum => :(record.readnum = @relpos(p)),
     :record_strand => :(record.strand = @relpos(p)),
-    :record_cg_rle => :(record.cg_rle = (pos:@relpos(p-1))),
-    :record_gc_rle => :(record.gc_rle = (pos:@relpos(p-1)); record.nome==1),
+	:record_cg_rle => :(record.cg_rle = (pos:@relpos(p-1))),
+	:record_gc_rle => :(record.gc_rle = (pos:@relpos(p-1)); record.nome==1),
     :record => :(record.filled = 1:@relpos(p-1))
 )
 
