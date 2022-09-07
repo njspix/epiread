@@ -3,6 +3,7 @@
 import Automa
 import Automa.RegExp: @re_str
 import Automa.Stream: @mark, @markpos, @relpos, @abspos
+const re = Automa.RegExp
 
 function appendfrom!(dst, dpos, src, spos, n)
     if length(dst) < dpos + n - 1
@@ -28,8 +29,8 @@ end
 Create a data reader of the EPIREAD file format.
 
 The first argument specifies the data source.
-When it is a filepath that ends with *.bgz*, it is considered to be block 
-compression file format (BGZF) and the function will try to find a tabix 
+When it is a filepath that ends with *.bgz*, it is considered to be block
+compression file format (BGZF) and the function will try to find a tabix
 index file (<filename>.tbi) and read it if any.
 See <http://www.htslib.org/doc/tabix.html> for bgzip and tabix tools.
 
@@ -88,11 +89,6 @@ function GenomicFeatures.eachoverlap(reader::Reader, interval::GenomicFeatures.I
 end
 
 const record_machine, file_machine = (function ()
-    alt = Automa.RegExp.alt
-    cat = Automa.RegExp.cat
-    rep = Automa.RegExp.rep
-    opt = Automa.RegExp.opt
-
     record = let
         chrom = re"[ -~]*"
         chrom.actions[:enter] = [:pos]
@@ -116,15 +112,15 @@ const record_machine, file_machine = (function ()
         strand = re"[+\-.?]"
         strand.actions[:enter] = [:record_strand] #Note: single byte.
 
-        cg_rle = re"[FDPMUATCGatcgx0-9]+"
+        cg_rle = re"[FDPMUATCGNatcgnx0-9]+"
         cg_rle.actions[:enter] = [:pos]
         cg_rle.actions[:exit] = [:record_cg_rle]
 
-		gc_rle = re"[FDPOSATCGatcgx0-9]+"
+		gc_rle = re"[FDPOSATCGNatcgnx0-9]+"
         gc_rle.actions[:enter] = [:pos]
         gc_rle.actions[:exit] = [:record_gc_rle]
 
-        cat(
+        re.cat(
             chrom, '\t',
             chromstart, '\t',
             chromend, '\t',
@@ -132,30 +128,17 @@ const record_machine, file_machine = (function ()
             readnum, '\t',
             strand, '\t',
             cg_rle,
-            opt(cat('\t', gc_rle))
+            re.opt(re.cat('\t', gc_rle))
 		)
     end
     record.actions[:enter] = [:mark]
     record.actions[:exit] = [:record]
 
-    hspace = re"[ \t\v]"
+	newline = re.opt("\r") * re"\n"
+	line = record * newline
+	line.actions[:enter] = [:countline]
 
-    blankline = rep(hspace)
-
-    comment = re"#.*"
-
-    newline = let
-        lf = re"\n"
-        lf.actions[:enter] = [:countline]
-
-        cat(opt('\r'), lf)
-    end
-
-    file = rep(alt(
-        cat(record, newline),
-        cat(blankline, newline),
-        cat(comment, newline),
-    ))
+	file = re.rep(line)
 
     return map(Automa.compile, (record, file))
 end)()
@@ -168,7 +151,6 @@ run(`dot -Tsvg -o EPIREAD.svg EPIREAD.dot`)
 const record_actions = Dict(
     :mark => :(@mark),
     :pos => :(pos = @relpos(p)),
-    :countline => :(),
     :record_chrom => :(record.chrom = (pos:@relpos(p-1))),
     :record_chromstart => :(record.chromstart = (pos:@relpos(p-1))),
     :record_chromend => :(record.chromend = (pos:@relpos(p-1))),
@@ -241,7 +223,11 @@ It is assumed that `rec` is already initialized or empty.
 """
 function Base.read!(rdr::Reader, record::Record)
 
-    cs, ln, found = readrecord!(rdr.state.stream, record, (rdr.state.state, rdr.state.linenum))
+    cs, ln, found = readrecord!(
+		rdr.state.stream, 
+		record, 
+		(rdr.state.state, rdr.state.linenum)
+	)
 
     rdr.state.state = cs
     rdr.state.linenum = ln
