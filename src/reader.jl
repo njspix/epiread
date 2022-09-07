@@ -43,23 +43,24 @@ function Reader(input::IO; index=nothing)
         index = Indexes.Tabix(index)
     end
 
-    stream = TranscodingStreams.NoopStream(input)
+	stream = TranscodingStreams.NoopStream(input)
 
     return Reader(stream, index)
-
 end
 
-function Reader(filepath::AbstractString; index=:auto)
+function Reader(filepath::AbstractString; index=:auto, nthreads = 1)
     if isa(index, Symbol) && index != :auto
         throw(ArgumentError("invalid index argument: ':$(index)'"))
     end
     if endswith(filepath, ".bgz")
-        input = BGZFStreams.BGZFStream(filepath)
+		println("Decompressing with $(nthreads) threads")
+        input = CodecBGZF.BGZFDecompressorStream(open(filepath); nthreads = nthreads)
         if index == :auto
             index = Indexes.findtabix(filepath)
         end
     else
         input = open(filepath)
+		index = nothing
     end
     return Reader(input, index = index)
 end

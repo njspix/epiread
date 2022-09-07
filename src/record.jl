@@ -245,9 +245,9 @@ end
 
 Get the read number.
 """
-function readnum(record::Record)::Int
+function readnum(record::Record)::Char
     checkfilled(record)
-    return String(record.data[record.readnum])
+    return Char(record.data[record.readnum])
 end
 
 """
