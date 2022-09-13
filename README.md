@@ -1,3 +1,4 @@
 # EPIREAD
 
-[![Build Status](https://github.com/njspix/EPIREAD.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/njspix/EPIREAD.jl/actions/workflows/CI.yml?query=branch%3Amain)
+Work in progress! 
+A Julia module to parse and summarize Epibed formatted files produced by [Biscuit](https://huishenlab.github.io/biscuit/).
