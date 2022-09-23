@@ -209,13 +209,14 @@ function analyze_chr(reader::EPIREAD.Reader, max_isize::Int, leftover_record::EP
     if EPIREAD.isfilled(leftover_record)
         push!(record_cache, leftover_record)
         last_chr = EPIREAD.chrom(leftover_record)
+        i = 1
     end
 
     # Pre-allocate record
     record = EPIREAD.Record()
     while !eof(reader)
         empty!(record)
-        read!(reader, record)
+        read!(reader, record) 
         name = EPIREAD.name(record)
         chromstart = EPIREAD.chromstart(record)
         current_chr = EPIREAD.chrom(record)
@@ -226,9 +227,10 @@ function analyze_chr(reader::EPIREAD.Reader, max_isize::Int, leftover_record::EP
             for each in record_cache
                 analyze_read(each, I, J, V)
             end
-            println("Completed analyis of chromosome $(last_chr)")
-            return (sparse(I,J,V), indel_error_reads, last_chr, new_chr_first_record)
+            println("Completed analyis of $i reads in $(last_chr)")
+            return (sparse(I,J,V), indel_error_reads, last_chr, record)
         else
+            i += 1
             # Find the furthest-left *end* coordinate of all reads in the cache (if it is too far away from the beginning of this read, we'll never be able to pair to it)
             leftmost_chromend = get_leftmost_chromend(record_cache)
             # Test as above, and also check if we're on a new chr.
@@ -248,18 +250,22 @@ function analyze_chr(reader::EPIREAD.Reader, max_isize::Int, leftover_record::EP
             else
                 push!(record_cache, copy(record))
             end
-            i += 1
             last_chr = current_chr
         end
     end
 
+    # Clean out the cache
+    for each in record_cache
+        analyze_read(each, I, J, V)
+    end
+    println("Completed analyis of $i reads in $(last_chr)")
     return (sparse(I,J,V), indel_error_reads, last_chr, EPIREAD.Record())
 end
 
 
 function analyze_file(filename::String; max_isize = 1000)
 
-    results = Dict{String, SparseMatrixCSC{String, Int64}}()
+    results = Dict{String, SparseMatrixCSC{Char, Int64}}()
     indel_error_reads = Vector{String}()
     leftover_record = EPIREAD.Record()
 
@@ -275,6 +281,12 @@ function analyze_file(filename::String; max_isize = 1000)
         println(indel_error_reads)
     end
     close(reader)
+
+    # for each in keys(results)
+    #     println("Results for $(each):")
+    #     show(results[each])
+    #     println()
+    # end
 end
 
 analyze_file("./testing/test_epiread_small.bed")
