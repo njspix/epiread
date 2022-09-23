@@ -197,12 +197,12 @@ function analyze_record_pair(read1::EPIREAD.Record, read2::EPIREAD.Record, maste
 	end
 end
 
-# TODO! Need to watch out for chromosome switching!!!
-function analyze_chr(reader::EPIREAD.Reader, indel_error_reads::Vector{String}, max_isize::Int, leftover_record::EPIREAD.Record)
+function analyze_chr(reader::EPIREAD.Reader, max_isize::Int, leftover_record::EPIREAD.Record)
 
     i = 0 # counter for number of reads analyzed
     I,J,V = Vector{Int64}(), Vector{Int64}(), Vector{Char}() # vectors for sparse matrix
-    record_cache = Vector{EPIREAD.Record}() # vector for storing reads that could possibly be paired with an upcoming read
+    record_cache = Vector{EPIREAD.Record}() # Reads that could possibly be paired with an upcoming read
+    indel_error_reads = Vector{String}() # Read names that have an indel mismatch in their overlapping portions
     last_chr = String("") # Current chromosome being analyzed
 
     # Put the 'leftover' record from the previous chromosome into the record_cache for analysis
@@ -227,8 +227,7 @@ function analyze_chr(reader::EPIREAD.Reader, indel_error_reads::Vector{String}, 
                 analyze_read(each, I, J, V)
             end
             println("Completed analyis of chromosome $(last_chr)")
-            println("$i reads analyzed; found $(length(indel_error_reads)) reads with indel errors")
-            return (reader, sparse(I,J,V), indel_error_reads, last_chr, new_chr_first_record)
+            return (sparse(I,J,V), indel_error_reads, last_chr, new_chr_first_record)
         else
             # Find the furthest-left *end* coordinate of all reads in the cache (if it is too far away from the beginning of this read, we'll never be able to pair to it)
             leftmost_chromend = get_leftmost_chromend(record_cache)
@@ -254,7 +253,7 @@ function analyze_chr(reader::EPIREAD.Reader, indel_error_reads::Vector{String}, 
         end
     end
 
-    return (reader, sparse(I,J,V), indel_error_reads, last_chr)
+    return (sparse(I,J,V), indel_error_reads, last_chr, EPIREAD.Record())
 end
 
 
@@ -266,7 +265,7 @@ function analyze_file(filename::String; max_isize = 1000)
 
     reader = EPIREAD.Reader(filename)
     while !eof(reader)
-        (reader, sparse_results, new_indel_errors, last_chr, leftover_record) = analyze_chr(reader, indel_error_reads, max_isize, leftover_record)
+        (sparse_results, new_indel_errors, last_chr, leftover_record) = analyze_chr(reader, max_isize, leftover_record)
         results[last_chr] = sparse_results
         append!(new_indel_errors, indel_error_reads)
     end
@@ -277,10 +276,5 @@ function analyze_file(filename::String; max_isize = 1000)
     end
     close(reader)
 end
-
-println("Finished processing $(i) reads")
-
-# Finally, close the reader.
-close(reader)
 
 analyze_file("./testing/test_epiread_small.bed")
