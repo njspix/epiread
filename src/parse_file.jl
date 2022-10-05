@@ -56,7 +56,7 @@ end
 #Note that if we call EPIREAD.chromstart(record) to get the start position of the read, it is 1-based, end-inclusive (*on-base*). Try to match this here. 
 function get_feature_pos_in_read(rle::String)
 	J = Vector{Int64}()
-	V = Vector{Char}()
+	V = Vector{Int}()
 	counter = 0
 
     try
@@ -67,7 +67,7 @@ function get_feature_pos_in_read(rle::String)
                 for i in 1:rep
                     counter += 1
                     push!(J, copy(counter))
-                    push!(V, base)
+                    push!(V, Int(base))
                 end
             elseif occursin(base, "acgtn") # insertion base
                 # handle this better in the future, but for right now keep everything aligned with reference
@@ -95,7 +95,7 @@ function get_feature_pos_absolute(rle::String, read_start::Int64)
 	return (J.+read_start.-1, V, error) # we have to subtract one, as this is 1-start, fully closed
 end
 
-function update_vecs(master_I::Vector{Int64}, master_J::Vector{Int64}, master_V::Vector{Char}, J::Vector{Int64}, V::Vector{Char})
+function update_vecs(master_I::Vector{Int64}, master_J::Vector{Int64}, master_V::Vector{Int}, J::Vector{Int64}, V::Vector{Int})
 	read_num = length(master_I) == 0 ? Int64(1) : master_I[end]+1
 	append!(master_I, fill(read_num, length(J)))
 	append!(master_J, J)
@@ -103,7 +103,7 @@ function update_vecs(master_I::Vector{Int64}, master_J::Vector{Int64}, master_V:
 	return nothing
 end
 
-function analyze_read(read::EPIREAD.Record, master_I::Vector{Int64}, master_J::Vector{Int64}, master_V::Vector{Char})
+function analyze_read(read::EPIREAD.Record, master_I::Vector{Int64}, master_J::Vector{Int64}, master_V::Vector{Int})
 	# println("analyzing read $(EPIREAD.name(read))/$(EPIREAD.readnum(read)) ($(EPIREAD.chrom(read))): $(EPIREAD.cg_rle(read))")
 	J, V, error = get_feature_pos_absolute(EPIREAD.cg_rle(read), EPIREAD.chromstart(read))
     # This method is only used for analyzing single reads, so we should never get an IndelError. If we do get an error, we need to throw it:
@@ -114,7 +114,7 @@ function analyze_read(read::EPIREAD.Record, master_I::Vector{Int64}, master_J::V
 	return nothing
 end
 
-function analyze_read(rle::String, chromstart::Int64, read_name::String, master_I::Vector{Int64}, master_J::Vector{Int64}, master_V::Vector{Char}, indel_error_reads::Vector{String})
+function analyze_read(rle::String, chromstart::Int64, read_name::String, master_I::Vector{Int64}, master_J::Vector{Int64}, master_V::Vector{Int}, indel_error_reads::Vector{String})
 	# println("analyzing read $(EPIREAD.name(read))/$(EPIREAD.readnum(read)) ($(EPIREAD.chrom(read))): $(EPIREAD.cg_rle(read))")
 	J, V, error = get_feature_pos_absolute(rle, chromstart)
     # this method is used for analyzing merged paired reads, so we might get an IndelError. If we do, add the read name to the IndelError Vector
@@ -179,7 +179,7 @@ function merge_rle(read1::EPIREAD.Record, read2::EPIREAD.Record)
 	return (merge_rle(long_rle, short_rle), EPIREAD.chromstart(left_read))
 end
 
-function analyze_record_pair(read1::EPIREAD.Record, read2::EPIREAD.Record, master_I::Vector{Int64}, master_J::Vector{Int64}, master_V::Vector{Char}, indel_error_reads::Vector{String})
+function analyze_record_pair(read1::EPIREAD.Record, read2::EPIREAD.Record, master_I::Vector{Int64}, master_J::Vector{Int64}, master_V::Vector{Int}, indel_error_reads::Vector{String})
 	if !allsame(EPIREAD.chrom.((read1, read2)))
 		for each in (read1, read2)
 			analyze_read(each, master_I, master_J, master_V)
@@ -200,7 +200,7 @@ end
 function analyze_chr(reader::EPIREAD.Reader, max_isize::Int, leftover_record::EPIREAD.Record)
 
     i = 0 # counter for number of reads analyzed
-    I,J,V = Vector{Int64}(), Vector{Int64}(), Vector{Char}() # vectors for sparse matrix
+    I,J,V = Vector{Int64}(), Vector{Int64}(), Vector{Int}() # vectors for sparse matrix
     record_cache = Vector{EPIREAD.Record}() # Reads that could possibly be paired with an upcoming read
     indel_error_reads = Vector{String}() # Read names that have an indel mismatch in their overlapping portions
     last_chr = String("") # Current chromosome being analyzed
@@ -265,7 +265,7 @@ end
 
 function analyze_file(filename::String; max_isize = 1000)
 
-    results = Dict{String, SparseMatrixCSC{Char, Int64}}()
+    results = Dict{String, SparseMatrixCSC{Int, Int64}}()
     indel_error_reads = Vector{String}()
     leftover_record = EPIREAD.Record()
 
@@ -287,6 +287,8 @@ function analyze_file(filename::String; max_isize = 1000)
     #     show(results[each])
     #     println()
     # end
+
+    return results
 end
 
 analyze_file("./testing/test_epiread_small.bed")

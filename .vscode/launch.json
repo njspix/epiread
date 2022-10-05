@@ -11,7 +11,11 @@
 			"program": "${file}",
 			"stopOnEntry": false,
 			"cwd": "${workspaceFolder}",
-			"juliaEnv": "${command:activeJuliaEnvironment}"
+			"juliaEnv": "${command:activeJuliaEnvironment}",
+			"args": [
+				"--threads",
+				"8"
+			]
 		}
 	]
 }
