@@ -268,7 +268,7 @@ function analyze_chr(reader::EPIREAD.Reader, max_isize::Int, leftover_record::EP
 end
 
 
-function analyze_file(filename::String; max_isize = 1000)
+function parse_infile(filename::String; max_isize = 1000)
 
     results = Dict{String, SparseMatrixCSC{Int, Int64}}()
     indel_error_reads = Vector{String}()
@@ -287,13 +287,116 @@ function analyze_file(filename::String; max_isize = 1000)
     end
     close(reader)
 
-    # for each in keys(results)
-    #     println("Results for $(each):")
-    #     show(results[each])
-    #     println()
-    # end
-
     return results
 end
 
-analyze_file("./testing/test_epiread_small.bed")
+#==========================================
+Epiallele parsing and counting functions
+==========================================#
+
+#= We need to set up this struct to allow for quick comparisons between epireads. 
+	If they only differ at 'N' bases, they should be treated as identical =#
+
+    struct Epiallele <: AbstractVector{Int64}
+        x::Vector{Int64}
+    end
+    
+    function Base.size(x::Epiallele)
+        return size(x.x)
+    end
+    
+    function Base.getindex(x::Epiallele, i::Int64)
+        return x.x[i]
+    end
+    
+    function Base.:(==)(x::Epiallele, y::Epiallele) 
+        # if the epialleles are different lengths, return false
+        if length(x.x) != length(y.x)
+            return false
+        end
+        # compare elementwise; if only difference is at N's (78), return true
+        for i in 1:length(x.x)
+            if x.x[i] != y.x[i] && x.x[i] != 78 && y.x[i] != 78
+                return false
+            end
+        end
+        return true
+    end
+    
+    function Base.isequal(x::Epiallele, y::Epiallele)
+        return x == y
+    end
+    
+    # Zero initializer for Epiallele
+    function Base.zeros(::Type{Epiallele}, n::Int64)
+        return Epiallele(zeros(Int64, n))
+    end
+
+function get_unsparse_nonzero_rows(matrix::SparseMatrixCSC{Int64, Int64})
+	nzrows = unique(matrix.rowval)
+	if !isempty(nzrows)
+		return Matrix(matrix)[nzrows,:]
+	else 
+		return Matrix{Int64}(0, (0, 0))
+	end
+end
+
+function matrix_to_epiallele_vector(mat::Matrix{Int64})
+	vec = Vector{Epiallele}(undef, size(mat, 1))
+	for i in 1:size(mat, 1)
+		vec[i] = Epiallele(mat[i,:])
+	end
+	return vec
+end
+
+function diff_from_all_epialleles(needle::Epiallele, haystack::Vector{Epiallele})
+	for i in 1:length(haystack)
+		if needle == haystack[i]
+			return false
+		end
+	end
+	return true
+end
+
+function count_epialleles(epiallele_vec::Vector{Epiallele})
+	seen = fill(zeros(Epiallele, length(epiallele_vec[1])), length(epiallele_vec))
+	unique = 0
+	for i in 1:length(epiallele_vec)
+		diff_from_all_epialleles(epiallele_vec[i], seen) && (unique += 1)
+		seen[i] = epiallele_vec[i]
+	end
+	return unique
+end
+
+function tally_epialles(matrix::SparseMatrixCSC{Int64, Int64}, chr::String; window_size = 4::Int)
+    n_bases = size(matrix, 2)
+    println("fixedStep\tchrom=$(chr)\tstart=1\tstep=$(window_size)")
+    for i in 1:window_size:n_bases
+        try
+            upper_limit = minimum(i+window_size-1, nbases)
+            a = get_unsparse_nonzero_rows(matrix[:,i:upper_limit])
+            if !isempty(a)
+                n = count_epialleles(matrix_to_epiallele_vector(a))
+                println(n)
+            else
+                println("0")
+            end
+        catch
+            println("0")
+        end
+    end
+end
+
+function output_stats(results::Dict{String, SparseMatrixCSC{Int64, Int64}})
+    println("track type=wiggle_0")
+    for (chr, matrix) in results
+        tally_epialles(matrix, chr)
+    end
+end
+
+function process_file(filename::String; max_isize = 1000)
+    results = parse_infile(filename, max_isize = max_isize)
+    output_stats(results)
+end
+
+process_file("./testing/test_epiread_small.bed")
