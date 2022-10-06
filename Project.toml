@@ -3,6 +3,9 @@ uuid = "af5784a1-659f-4b92-a239-1891a7c5b08b"
 authors = ["Nathan Spix"]
 version = "0.1.0"
 
+[deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+
 [compat]
 julia = "1"
 

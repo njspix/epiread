@@ -54,17 +54,22 @@ function parse_rle(rle::String)
 end 
 
 #Note that if we call EPIREAD.chromstart(record) to get the start position of the read, it is 1-based, end-inclusive (*on-base*). Try to match this here. 
-function get_feature_pos_in_read(rle::String)
+function get_feature_pos_in_read(rle::String; mode = 'M')
 	J = Vector{Int64}()
 	V = Vector{Int}()
 	counter = 0
 
+    if mode == 'M'# methylation + SNP
+        ignore_base = "FPx_OSQ" # sequencing errors and open/shut don't indicate different epialleles
+        feature_base = "MUACGTN"
+    end
+
     try
         for (base, rep) in parse_rle(rle)
-            if occursin(base, "FPx_") # nothing base
+            if occursin(base, ignore_base) 
                 counter += rep
-            elseif occursin(base, "MUOSACGTNQ") # feature base
-                for i in 1:rep
+            elseif occursin(base, feature_base) 
+                for _ in 1:rep
                     counter += 1
                     push!(J, copy(counter))
                     push!(V, Int(base))
