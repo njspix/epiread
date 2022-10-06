@@ -1,4 +1,4 @@
-include("/Users/Nathan.Spix/Library/CloudStorage/OneDrive-VanAndelInstitute/Desktop/julia/epiread/src/EPIREAD.jl")
+include("/home/nathan.spix/projects/julia/epiread/src/EPIREAD.jl")
 using SparseArrays
 allsame(x) = all(y->y==first(x),x)
 struct IndelError <: Exception
@@ -232,7 +232,7 @@ function analyze_chr(reader::EPIREAD.Reader, max_isize::Int, leftover_record::EP
             for each in record_cache
                 analyze_read(each, I, J, V)
             end
-            println("Completed analyis of $i reads in $(last_chr)")
+            println(Base.stderr, "Completed analyis of $i reads in $(last_chr)")
             return (sparse(I,J,V), indel_error_reads, last_chr, record)
         else
             i += 1
@@ -263,7 +263,7 @@ function analyze_chr(reader::EPIREAD.Reader, max_isize::Int, leftover_record::EP
     for each in record_cache
         analyze_read(each, I, J, V)
     end
-    println("Completed analyis of $i reads in $(last_chr)")
+    println(Base.stderr, "Completed analyis of $i reads in $(last_chr)")
     return (sparse(I,J,V), indel_error_reads, last_chr, EPIREAD.Record())
 end
 
@@ -282,8 +282,8 @@ function parse_infile(filename::String; max_isize = 1000)
     end
 
     if length(indel_error_reads) > 0
-        println("WARNING: $(length(indel_error_reads)) reads had mismatching indels and were not analyzed:")
-        println(indel_error_reads)
+        println(Base.stderr, "WARNING: $(length(indel_error_reads)) reads had mismatching indels and were not analyzed:")
+        println(Base.stderr, indel_error_reads)
     end
     close(reader)
 
@@ -372,6 +372,7 @@ function tally_epialles(matrix::SparseMatrixCSC{Int64, Int64}, chr::String; wind
     n_bases = size(matrix, 2)
     println("fixedStep\tchrom=$(chr)\tstart=1\tstep=$(window_size)")
     for i in 1:window_size:n_bases
+        i % 100000 == 0 && println(Base.stderr, "Tallying epialleles at position $i of $n_bases")
         try
             upper_limit = minimum(i+window_size-1, nbases)
             a = get_unsparse_nonzero_rows(matrix[:,i:upper_limit])
@@ -390,6 +391,7 @@ end
 function output_stats(results::Dict{String, SparseMatrixCSC{Int64, Int64}})
     println("track type=wiggle_0")
     for (chr, matrix) in results
+        println(Base.stderr, "Processing chr $chr")
         tally_epialles(matrix, chr)
     end
 end
@@ -399,4 +401,4 @@ function process_file(filename::String; max_isize = 1000)
     output_stats(results)
 end
 
-process_file("./testing/test_epiread_small.bed")
+process_file("/home/nathan.spix/projects/julia/epiread/testing/test_epiread_small.bed")
