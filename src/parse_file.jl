@@ -371,10 +371,10 @@ end
 function tally_epialles(matrix::SparseMatrixCSC{Int64, Int64}, chr::String; window_size = 4::Int)
     n_bases = size(matrix, 2)
     println("fixedStep\tchrom=$(chr)\tstart=1\tstep=$(window_size)")
-    prev_epiallele_count = 0
+    current_bed_line = (0::Int, 0::Int) # (start, n_alleles)
     for i in 1:window_size:n_bases
         if i % 10000 == 1
-            println(Base.stderr, "Tallying epialleles at position $i of $n_bases")
+            println(Base.stderr, "Tallying epialleles on $(chr) at position $(i) of $(n_bases)")
             flush(stdout)
         end
     
@@ -382,16 +382,16 @@ function tally_epialles(matrix::SparseMatrixCSC{Int64, Int64}, chr::String; wind
         a = get_unsparse_nonzero_rows(matrix[:,i:upper_limit])
         if !isempty(a)
             n = count_epialleles(matrix_to_epiallele_vector(a))
-            println(n)
-        else
-            println("0")
+            if n != current_bed_line[2]
+                println("$(chr)\t$(current_bed_line[1])\t$(upper_limit)\t$(n)")
+                current_bed_line = (i-1, n)
+            end
         end
-
     end
 end
 
 function output_stats(results::Dict{String, SparseMatrixCSC{Int64, Int64}})
-    println("track type=wiggle_0")
+    println("track type=bedGraph")
     chrs = collect(keys(results))
     for chr in sort(chrs)
         println(Base.stderr, "Processing $chr")
