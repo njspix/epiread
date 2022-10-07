@@ -232,7 +232,7 @@ function analyze_chr(reader::EPIREAD.Reader, max_isize::Int, leftover_record::EP
             for each in record_cache
                 analyze_read(each, I, J, V)
             end
-            println(Base.stderr, "Completed analyis of $i reads in $(last_chr)")
+            println(Base.stderr, "Parsed $i reads in $(last_chr)")
             return (sparse(I,J,V), indel_error_reads, last_chr, record)
         else
             i += 1
