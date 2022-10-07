@@ -378,6 +378,7 @@ function tally_epialles(matrix::SparseMatrixCSC{Int64, Int64}, chr::String; wind
             a = get_unsparse_nonzero_rows(matrix[:,i:upper_limit])
             if !isempty(a)
                 n = count_epialleles(matrix_to_epiallele_vector(a))
+                println(Base.stderr, "Found some!")
                 println(n)
             else
                 println("0")
@@ -401,4 +402,4 @@ function process_file(filename::String; max_isize = 1000)
     output_stats(results)
 end
 
-process_file("/home/nathan.spix/projects/julia/epiread/testing/test_epiread_small.bed")
+# process_file("/home/nathan.spix/projects/julia/epiread/testing/test_epiread_small.bed")
