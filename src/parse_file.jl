@@ -1,4 +1,4 @@
-include("/home/nathan.spix/projects/julia/epiread/src/EPIREAD.jl")
+include("./EPIREAD.jl")
 using SparseArrays
 allsame(x) = all(y->y==first(x),x)
 struct IndelError <: Exception
@@ -337,7 +337,7 @@ function get_unsparse_nonzero_rows(matrix::SparseMatrixCSC{Int64, Int64})
 	if !isempty(nzrows)
 		return Matrix(matrix)[nzrows,:]
 	else 
-		return Matrix{Int64}(0, (0, 0))
+		return zeros(Int64, (0,0))
 	end
 end
 
@@ -371,29 +371,31 @@ end
 function tally_epialles(matrix::SparseMatrixCSC{Int64, Int64}, chr::String; window_size = 4::Int)
     n_bases = size(matrix, 2)
     println("fixedStep\tchrom=$(chr)\tstart=1\tstep=$(window_size)")
+    prev_epiallele_count = 0
     for i in 1:window_size:n_bases
-        i % 100000 == 0 && println(Base.stderr, "Tallying epialleles at position $i of $n_bases")
-        try
-            upper_limit = minimum(i+window_size-1, nbases)
-            a = get_unsparse_nonzero_rows(matrix[:,i:upper_limit])
-            if !isempty(a)
-                n = count_epialleles(matrix_to_epiallele_vector(a))
-                println(Base.stderr, "Found some!")
-                println(n)
-            else
-                println("0")
-            end
-        catch
+        if i % 10000 == 1
+            println(Base.stderr, "Tallying epialleles at position $i of $n_bases")
+            flush(stdout)
+        end
+    
+        upper_limit = minimum([i+window_size-1, n_bases])
+        a = get_unsparse_nonzero_rows(matrix[:,i:upper_limit])
+        if !isempty(a)
+            n = count_epialleles(matrix_to_epiallele_vector(a))
+            println(n)
+        else
             println("0")
         end
+
     end
 end
 
 function output_stats(results::Dict{String, SparseMatrixCSC{Int64, Int64}})
     println("track type=wiggle_0")
-    for (chr, matrix) in results
-        println(Base.stderr, "Processing chr $chr")
-        tally_epialles(matrix, chr)
+    chrs = collect(keys(results))
+    for chr in sort(chrs)
+        println(Base.stderr, "Processing $chr")
+        tally_epialles(results[chr], chr)
     end
 end
 
@@ -402,4 +404,4 @@ function process_file(filename::String; max_isize = 1000)
     output_stats(results)
 end
 
-# process_file("/home/nathan.spix/projects/julia/epiread/testing/test_epiread_small.bed")
+process_file("./testing/test_epiread.bed")
