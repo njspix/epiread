@@ -65,6 +65,9 @@ function get_feature_pos_in_read(rle::String; mode::Char)
     elseif mode == 'S' # SNP only
         ignore_base = "FPx_MUOSQ" # sequencing errors and open/shut don't indicate different epialleles
         feature_base = "ACGTN"
+    elseif mode == 'Q' # sequencing errors only
+        ignore_base = "FPx_OSMUACGTN"
+        feature_base = "Q"
     end
 
     try
@@ -294,7 +297,7 @@ function parse_infile(filename::String; max_isize = 1000, mode::Char)
 end
 
 #==========================================
-Epiallele parsing and counting functions
+Epiallele structs and methods
 ==========================================#
 
 #= We need to set up this struct to allow for quick comparisons between epireads. 
@@ -334,6 +337,10 @@ end
 function Base.zeros(::Type{Epiallele}, n::Int64)
     return Epiallele(zeros(Int64, n))
 end
+
+#==========================================
+Epiallele parsing and counting functions
+==========================================#
 
 function get_unsparse_nonzero_rows(matrix::SparseMatrixCSC{Int64, Int64})
 	nzrows = unique(matrix.rowval)
@@ -375,8 +382,8 @@ function tally_epialles(matrix::SparseMatrixCSC{Int64, Int64}, chr::String; wind
     n_bases = size(matrix, 2)
     current_bed_line = (0::Int, 0::Int) # (start, n_alleles)
     for i in 1:window_size:n_bases
-        if i % 100000 == 1
-            println(Base.stderr, "Tallying epialleles on $(chr) at position $(i) of $(n_bases)")
+        if i % 1000000 == 1
+            println(Base.stderr, "\rTallying epialleles on $(chr) at position $(i) of $(n_bases)")
             flush(stdout)
         end
         upper_limit = minimum([i+window_size-1, n_bases])
@@ -408,4 +415,4 @@ function process_file(filename::String; max_isize = 1000, window_size = 4::Int, 
     output_stats(results, window_size = window_size)
 end
 
-process_file("./testing/luo_epiread.bed", window_size = 10)
+process_file("./testing/C3P3B3S1_L000_bsconv-cph-filter_cov_filtered.epi.bed", window_size = 10, mode = 'Q')
