@@ -382,7 +382,7 @@ function count_max_features_in_window(mat::Matrix{Int64})
     maximum(sum.(eachcol(mat)))
 end
 
-function tally_epialles(matrix::SparseMatrixCSC{Int64, Int64}, chr::String; window_size::Int, mode::Char)
+function tally_epialles(matrix::SparseMatrixCSC{Int64, Int64}, chr::String; window_size::Int)
     n_bases = size(matrix, 2)
     current_bed_line = (0::Int, 0::Int) # (start, n_alleles)
     for i in 1:window_size:n_bases
@@ -395,11 +395,30 @@ function tally_epialles(matrix::SparseMatrixCSC{Int64, Int64}, chr::String; wind
 
         n = 0
         if !isempty(a)
-            if mode == 'Q'
-                n = count_max_features_in_window(a)
-            else
-                n = count_unique_alleles(matrix_to_epiallele_vector(a))
-            end
+            n = count_unique_alleles(matrix_to_epiallele_vector(a))
+        end
+
+        if n != current_bed_line[2]
+            println("$(chr)\t$(current_bed_line[1])\t$(i-1)\t$(current_bed_line[2])")
+            current_bed_line = (i-1, n)
+        end
+    end
+end
+
+function tally_max(matrix::SparseMatrixCSC{Int64, Int64}, chr::String; window_size::Int)
+    n_bases = size(matrix, 2)
+    current_bed_line = (0::Int, 0::Int) # (start, n_alleles)
+    for i in 1:window_size:n_bases
+        if i % 1000000 == 1
+            println(Base.stderr, "\rTallying epialleles on $(chr) at position $(i) of $(n_bases)")
+            flush(stdout)
+        end
+        upper_limit = minimum([i+window_size-1, n_bases])
+        a = get_unsparse_nonzero_rows(matrix[:,i:upper_limit])
+
+        n = 0
+        if !isempty(a)
+            n = count_max_features_in_window(a)
         end
 
         if n != current_bed_line[2]
@@ -414,7 +433,11 @@ function output_stats(results::Dict{String, SparseMatrixCSC{Int64, Int64}}; wind
     chrs = collect(keys(results))
     for chr in sort(chrs)
         println(Base.stderr, "Processing $chr")
-        tally_epialles(results[chr], chr, window_size = window_size, mode = mode)
+        if mode == 'Q'
+            tally_max(results[chr], chr, window_size = window_size)
+        else
+            tally_epialles(results[chr], chr, window_size = window_size)
+        end
     end
 end
 
