@@ -368,7 +368,7 @@ function diff_from_all_epialleles(needle::Epiallele, haystack::Vector{Epiallele}
 	return true
 end
 
-function count_epialleles(epiallele_vec::Vector{Epiallele})
+function count_unique_alleles(epiallele_vec::Vector{Epiallele})
 	seen = fill(zeros(Epiallele, length(epiallele_vec[1])), length(epiallele_vec))
 	unique = 0
 	for i in 1:length(epiallele_vec)
@@ -378,7 +378,11 @@ function count_epialleles(epiallele_vec::Vector{Epiallele})
 	return unique
 end
 
-function tally_epialles(matrix::SparseMatrixCSC{Int64, Int64}, chr::String; window_size = 4::Int)
+function count_max_features_in_window(mat::Matrix{Int64})
+    maximum(sum.(eachcol(mat)))
+end
+
+function tally_epialles(matrix::SparseMatrixCSC{Int64, Int64}, chr::String; window_size::Int, mode::Char)
     n_bases = size(matrix, 2)
     current_bed_line = (0::Int, 0::Int) # (start, n_alleles)
     for i in 1:window_size:n_bases
@@ -391,7 +395,11 @@ function tally_epialles(matrix::SparseMatrixCSC{Int64, Int64}, chr::String; wind
 
         n = 0
         if !isempty(a)
-            n = count_epialleles(matrix_to_epiallele_vector(a))
+            if mode == 'Q'
+                n = count_max_features_in_window(a)
+            else
+                n = count_unique_alleles(matrix_to_epiallele_vector(a))
+            end
         end
 
         if n != current_bed_line[2]
@@ -401,18 +409,18 @@ function tally_epialles(matrix::SparseMatrixCSC{Int64, Int64}, chr::String; wind
     end
 end
 
-function output_stats(results::Dict{String, SparseMatrixCSC{Int64, Int64}}; window_size = 4::Int)
+function output_stats(results::Dict{String, SparseMatrixCSC{Int64, Int64}}; window_size::Int, mode::Char)
     println("track type=bedGraph")
     chrs = collect(keys(results))
     for chr in sort(chrs)
         println(Base.stderr, "Processing $chr")
-        tally_epialles(results[chr], chr, window_size = window_size)
+        tally_epialles(results[chr], chr, window_size = window_size, mode = mode)
     end
 end
 
 function process_file(filename::String; max_isize = 1000, window_size = 4::Int, mode::Char = 'M')
     results = parse_infile(filename, max_isize = max_isize, mode = mode)
-    output_stats(results, window_size = window_size)
+    output_stats(results, window_size = window_size, mode = mode)
 end
 
-process_file("./testing/C3P3B3S1_L000_bsconv-cph-filter_cov_filtered.epi.bed", window_size = 10, mode = 'Q')
+process_file("./testing/C3P3B3_epireads.bed", window_size = 10, mode = 'Q')
