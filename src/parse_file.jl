@@ -387,7 +387,7 @@ function tally_epialles(matrix::SparseMatrixCSC{Int64, Int64}, chr::String; wind
     current_bed_line = (0::Int, 0::Int) # (start, n_alleles)
     for i in 1:window_size:n_bases
         if i % 1000000 == 1
-            println(Base.stderr, "\rTallying epialleles on $(chr) at position $(i) of $(n_bases)")
+            print(Base.stderr, "\rTallying epialleles on $(chr) at position $(i) of $(n_bases)")
             flush(stdout)
         end
         upper_limit = minimum([i+window_size-1, n_bases])
